@@ -1,5 +1,7 @@
 # Ultimate Tic-Tac-Toe
 
-A minimal, mobile-first two-player Ultimate Tic-Tac-Toe game with color selection and undo support.
+A minimal, mobile-first game for two people sharing a screen. Open `index.html` in a browser; no installation, build, or dependencies required.
 
-Play in the browser—no installation or dependencies required.
+Win three squares in a row to claim a small board. Each move sends your opponent to the corresponding small board. If that board is finished, they may choose any open board. Claim three boards in a row to win.
+
+Includes highlighted legal boards, undo, in-game rules, cancellable restart, and final-board inspection. Games last for the current page session.
