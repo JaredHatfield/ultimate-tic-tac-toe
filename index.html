@@ -36,7 +36,7 @@
     .cell.just-played { background:color-mix(in srgb,currentColor 12%,white); outline:2px solid currentColor; outline-offset:-3px; z-index:3; }
     .mark { display:block; width:76%; height:76%; }
     .mark path,.mark circle { fill:none; stroke:currentColor; stroke-width:8; stroke-linecap:round; }
-    .claim { position:absolute; inset:6px; display:grid; place-items:center; background:var(--paper); pointer-events:none; }
+    .claim { position:absolute; inset:6px; display:grid; place-items:center; background:rgba(255,255,255,.84); pointer-events:none; z-index:2; }
     .claim.x { color:var(--x); } .claim.o { color:var(--o); }
     .claim .mark { width:80%; height:80%; } .claim.draw { color:var(--muted); font-size:16px; letter-spacing:2px; }
     .footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:18px; }
@@ -54,7 +54,6 @@
     .rules li { padding-left:6px; margin:12px 0; }
     .primary { width:100%; min-height:50px; border:0; border-radius:6px; background:var(--ink); color:white; font-weight:600; font-size:18px; }
     .secondary { width:100%; min-height:48px; margin-top:8px; border:0; background:transparent; color:var(--muted); font-size:17px; }
-    .last-move { margin:16px 0 0; font-size:16px; line-height:1.5; min-height:24px; }
     .color-picker { margin:24px 0; }
     .color-picker fieldset { border:0; padding:0; margin:20px 0; min-width:0; }
     .color-picker legend { font-size:18px; font-weight:600; margin-bottom:10px; }
@@ -95,7 +94,6 @@
       <div class="ultimate-board" id="board" role="group" aria-label="Ultimate Tic-Tac-Toe board"></div>
     </div>
 
-    <p class="last-move" id="lastMove" aria-live="polite">X plays first.</p>
     <div class="footer">
       <div class="legend">
         <span id="xLegend"><i class="dot"></i> Player X</span>
@@ -126,6 +124,15 @@
       </details>
       <button class="primary" id="start" type="button">Let’s play</button>
       <button class="secondary" id="cancelSetup" type="button" hidden>Back to game</button>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmCopy">
+    <div class="dialog">
+      <h2 id="confirmTitle">Start a new game?</h2>
+      <p id="confirmCopy">This will replace your saved game. You can choose your colors on the next screen.</p>
+      <button class="primary" id="confirmNew" type="button">Continue</button>
+      <button class="secondary" id="cancelNew" type="button">Keep playing</button>
     </div>
   </div>
 
@@ -163,7 +170,7 @@
       let selectedX = '#245bea';
       let selectedO = '#d52c46';
       let pendingX = selectedX, pendingO = selectedO, lastMove = null;
-      const positions = ['top left','top middle','top right','middle left','center','middle right','bottom left','bottom middle','bottom right'];
+      const SAVE_KEY = 'ultimate-tic-tac-toe-v1';
       let started = false, helpOnly = false, returnFocus;
 
       const markSvg = player => player === 'X'
@@ -202,6 +209,39 @@
         gameOver = false;
         closeModal(resultModal);
         render();
+      }
+
+      function saveGame() {
+        if (!started) return;
+        try {
+          localStorage.setItem(SAVE_KEY, JSON.stringify({ version:1, cells, miniResults,
+            currentPlayer, targetBoard, history, gameOver, lastMove, selectedX, selectedO }));
+        } catch { /* Keep play available when browser storage is unavailable. */ }
+      }
+
+      function restoreGame() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+          const index = value => Number.isInteger(value) && value >= 0 && value < 9;
+          const validState = state => state && Array.isArray(state.cells) && state.cells.length === 9
+            && state.cells.every(row => Array.isArray(row) && row.length === 9 && row.every(value => [null,'X','O'].includes(value)))
+            && Array.isArray(state.miniResults) && state.miniResults.length === 9
+            && state.miniResults.every(value => [null,'X','O','D'].includes(value))
+            && ['X','O'].includes(state.currentPlayer)
+            && (state.targetBoard === null || index(state.targetBoard))
+            && (state.lastMove === null || (state.lastMove && index(state.lastMove.board)
+              && index(state.lastMove.cell) && ['X','O'].includes(state.lastMove.player)));
+          if (!saved || saved.version !== 1 || !validState(saved)
+            || typeof saved.gameOver !== 'boolean' || !Array.isArray(saved.history)
+            || saved.history.length > 81 || !saved.history.every(validState)
+            || !palette.some(([,color]) => color === saved.selectedX)
+            || !palette.some(([,color]) => color === saved.selectedO)
+            || saved.selectedX === saved.selectedO) return false;
+          ({ cells, miniResults, currentPlayer, targetBoard, history, gameOver, lastMove, selectedX, selectedO } = saved);
+          pendingX = selectedX; pendingO = selectedO;
+          started = true;
+          return true;
+        } catch { return false; }
       }
 
       function getWinner(values) {
@@ -282,7 +322,7 @@
           mini.querySelectorAll('.cell').forEach((button, c) => {
             const value = cells[b][c];
             button.innerHTML = value ? markSvg(value) : '';
-            button.className = `cell${value ? ` ${value.toLowerCase()}` : ''}${b === lastBoard && c === lastCell ? ' just-played' : ''}`;
+            button.className = `cell${value ? ` ${value.toLowerCase()}` : ''}${!miniResults[b] && b === lastBoard && c === lastCell ? ' just-played' : ''}`;
             if (b === lastBoard && c === lastCell) button.setAttribute("aria-description", "Last move");
             else button.removeAttribute("aria-description");
             button.disabled = gameOver || !active || Boolean(value);
@@ -297,9 +337,6 @@
           }
         });
 
-        const lastLabel = document.querySelector("#lastMove");
-        lastLabel.textContent = lastMove ? `Last move: ${lastMove.player} · ${positions[lastBoard]} board, ${positions[lastCell]} square` : "X plays first.";
-        lastLabel.style.color = lastMove ? (lastMove.player === "X" ? selectedX : selectedO) : "var(--muted)";
         const turnColor = currentPlayer === 'X' ? selectedX : selectedO;
         statusCard.style.setProperty('--turn-color', turnColor);
         root.style.setProperty('--turn-color', turnColor);
@@ -309,7 +346,17 @@
           ? `Play ${['top left','top middle','top right','middle left','in the center','middle right','bottom left','bottom middle','bottom right'][targetBoard]}`
           : 'Play in any open mini-board';
         if (gameOver) statusHint.textContent = 'Start a new game or undo the last move';
+        if (gameOver) {
+          const winner = getWinner(miniResults.map(value => value === 'D' ? null : value));
+          statusTitle.textContent = winner ? `Player ${winner} wins` : 'Game drawn';
+          if (!winner) {
+            root.style.setProperty('--turn-color', 'var(--ink)');
+            statusCard.style.setProperty('--turn-color', 'var(--ink)');
+            turnMark.textContent = '—';
+          }
+        }
         undoBtn.disabled = history.length === 0;
+        saveGame();
       }
 
       function showResult(winner) {
@@ -393,7 +440,13 @@
       document.querySelector('#viewBoard').addEventListener('click', () => closeModal(resultModal));
       document.querySelector('#undoResult').addEventListener('click', undo);
       undoBtn.addEventListener('click', undo);
-      restartBtn.addEventListener('click', () => openSetup(false));
+      const confirmModal = document.querySelector('#confirmModal');
+      restartBtn.addEventListener('click', () => openModal(confirmModal));
+      document.querySelector('#cancelNew').addEventListener('click', () => closeModal(confirmModal));
+      document.querySelector('#confirmNew').addEventListener('click', () => {
+        closeModal(confirmModal);
+        openSetup(false);
+      });
       document.addEventListener('keydown', event => {
         const modal = document.querySelector('.modal:not(.hidden)');
         if (!modal) return;
@@ -405,11 +458,18 @@
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       });
 
-      renderColors();
       makeBoard();
-      applyColors();
-      resetGame();
-      openModal(setupModal);
+      if (restoreGame()) {
+        applyColors();
+        renderColors();
+        closeModal(setupModal);
+        render();
+      } else {
+        renderColors();
+        applyColors();
+        resetGame();
+        openModal(setupModal);
+      }
     })();
   </script>
 </body>
