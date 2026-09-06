@@ -6,56 +6,67 @@
   <meta name="theme-color" content="#ffffff">
   <title>Ultimate Tic-Tac-Toe</title>
   <style>
-    :root { color-scheme: light; --ink:#242823; --muted:#697066; --line:#bac0b6; --paper:#fafbf7; --x:#242823; --o:#486c57; }
+    :root { color-scheme: light; --ink:#202020; --muted:#666666; --line:#bdbdbd; --paper:#ffffff; --x:#245bea; --o:#d52c46; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--paper); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-tap-highlight-color:transparent; }
     button { font:inherit; cursor:pointer; touch-action:manipulation; }
     button:disabled { cursor:default; }
-    button:focus-visible { outline:2px solid #486c57; outline-offset:3px; }
+    button:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
     .app { width:min(100%,560px); margin:auto; padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom)); }
     header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
     h1 { margin:0; font-size:22px; font-weight:650; letter-spacing:-.8px; }
-    .eyebrow { margin:6px 0 0; color:var(--muted); font-size:12px; }
+    .eyebrow { margin:6px 0 0; color:var(--muted); font-size:16px; }
     .icon-button { width:44px; height:44px; border:0; background:transparent; color:var(--ink); }
     .icon-button:disabled { opacity:.25; }
     .icon-button svg { width:22px; height:22px; }
-    .status-card { display:flex; align-items:center; gap:12px; margin:32px 0 24px; min-height:48px; }
+    .status-card { display:flex; align-items:center; gap:12px; margin:32px 0 24px; min-height:48px; border-top:6px solid var(--turn-color); padding-top:16px; }
     .turn-mark { font-size:32px; width:38px; color:var(--turn-color); font-weight:500; text-align:center; }
-    .status-title { font-size:16px; font-weight:600; }
-    .status-hint { color:var(--muted); font-size:13px; margin-top:4px; }
+    .status-title { font-size:21px; font-weight:600; }
+    .status-hint { color:var(--muted); font-size:16px; margin-top:4px; }
     .ultimate-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); aspect-ratio:1; width:100%; }
     .mini-board { position:relative; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); padding:10px; border:0 solid var(--ink); }
     .mini-board:not(:nth-child(3n)) { border-right-width:3px; }
     .mini-board:nth-child(-n+6) { border-bottom-width:3px; }
-    .mini-board.active { background:#eaf0e4; }
-    .mini-board.active::after { content:""; position:absolute; inset:4px; border:1px solid #92a486; pointer-events:none; }
+    .mini-board.active { background:#f3f3f3; }
+    .mini-board.active::after { content:""; position:absolute; inset:4px; border:1px solid #999; pointer-events:none; }
     .cell { position:relative; display:grid; place-items:center; min-width:0; min-height:0; padding:0; border:0 solid var(--line); background:transparent; color:var(--ink); }
     .cell:not(:nth-child(3n)) { border-right-width:1px; }
     .cell:nth-child(-n+6) { border-bottom-width:1px; }
     .cell.x { color:var(--x); } .cell.o { color:var(--o); }
-    .cell.just-played::after { content:""; position:absolute; bottom:2px; width:3px; height:3px; border-radius:50%; background:currentColor; }
+    .cell.just-played { background:color-mix(in srgb,currentColor 12%,white); outline:2px solid currentColor; outline-offset:-3px; z-index:3; }
     .mark { display:block; width:76%; height:76%; }
     .mark path,.mark circle { fill:none; stroke:currentColor; stroke-width:8; stroke-linecap:round; }
     .claim { position:absolute; inset:6px; display:grid; place-items:center; background:var(--paper); pointer-events:none; }
     .claim.x { color:var(--x); } .claim.o { color:var(--o); }
-    .claim .mark { width:80%; height:80%; } .claim.draw { color:var(--muted); font-size:12px; letter-spacing:2px; }
+    .claim .mark { width:80%; height:80%; } .claim.draw { color:var(--muted); font-size:16px; letter-spacing:2px; }
     .footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:18px; }
-    .legend { display:flex; gap:16px; font-size:12px; color:var(--muted); }
+    .legend { display:flex; gap:12px; font-size:16px; color:var(--muted); }
     .dot { display:none; }
-    .text-button { border:0; background:transparent; color:var(--ink); min-height:44px; padding:8px; font-size:13px; }
+    .text-button { border:0; background:transparent; color:var(--ink); min-height:44px; padding:8px; font-size:16px; }
     .help { display:block; margin:12px auto 0; color:var(--muted); text-decoration:underline; text-underline-offset:4px; }
-    .modal { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:24px; background:rgba(250,251,247,.97); overflow-y:auto; }
+    .modal { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:24px; background:#fff; overflow-y:auto; }
     .modal.hidden { display:none; }
     .dialog { width:min(100%,360px); margin:auto; }
     .dialog-mark { font-size:40px; letter-spacing:8px; margin-bottom:24px; }
     .dialog h2 { font-size:28px; font-weight:600; letter-spacing:-1px; margin:0; }
-    .dialog p { font-size:14px; line-height:1.6; color:var(--muted); margin:12px 0 24px; }
-    .rules { padding-left:22px; margin:24px 0 32px; font-size:14px; line-height:1.6; }
+    .dialog p { font-size:17px; line-height:1.6; color:var(--muted); margin:12px 0 24px; }
+    .rules { padding-left:22px; margin:24px 0 32px; font-size:17px; line-height:1.6; }
     .rules li { padding-left:6px; margin:12px 0; }
-    .primary { width:100%; min-height:50px; border:0; border-radius:6px; background:var(--ink); color:white; font-weight:600; }
-    .secondary { width:100%; min-height:48px; margin-top:8px; border:0; background:transparent; color:var(--muted); font-size:14px; }
+    .primary { width:100%; min-height:50px; border:0; border-radius:6px; background:var(--ink); color:white; font-weight:600; font-size:18px; }
+    .secondary { width:100%; min-height:48px; margin-top:8px; border:0; background:transparent; color:var(--muted); font-size:17px; }
+    .last-move { margin:16px 0 0; font-size:16px; line-height:1.5; min-height:24px; }
+    .color-picker { margin:24px 0; }
+    .color-picker fieldset { border:0; padding:0; margin:20px 0; min-width:0; }
+    .color-picker legend { font-size:18px; font-weight:600; margin-bottom:10px; }
+    .swatches { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; }
+    .swatch { display:grid; place-items:center; height:46px; padding:5px; border:2px solid transparent; border-radius:6px; background:white; color:var(--swatch); }
+    .swatch .mark { width:32px; height:32px; }
+    .swatch[aria-pressed="true"] { border-color:currentColor; background:color-mix(in srgb,currentColor 10%,white); }
+    .swatch:disabled { opacity:.18; }
+    .setup-rules { margin:24px 0; }
+    .setup-rules summary { cursor:pointer; min-height:44px; padding-block:10px; font-size:17px; }
     [hidden] { display:none !important; }
-    @media (hover:hover) { .active .cell:not(:disabled):hover { background:#dce6d4; } .text-button:hover { color:#486c57; } }
+    @media (hover:hover) { .active .cell:not(:disabled):hover { background:#e5e5e5; } .text-button:hover { color:var(--ink); } }
     @media (max-width:360px) { .app { padding-inline:10px; } .mini-board { padding:7px; } h1 { font-size:20px; } }
     @media (max-height:700px) { .app { padding-top:12px; } .status-card { margin:18px 0; } .footer { margin-top:10px; } }
   </style>
@@ -84,6 +95,7 @@
       <div class="ultimate-board" id="board" role="group" aria-label="Ultimate Tic-Tac-Toe board"></div>
     </div>
 
+    <p class="last-move" id="lastMove" aria-live="polite">X plays first.</p>
     <div class="footer">
       <div class="legend">
         <span id="xLegend"><i class="dot"></i> Player X</span>
@@ -96,15 +108,22 @@
 
   <div class="modal" id="setupModal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
     <div class="dialog">
-      <div class="dialog-mark" aria-hidden="true">× ○</div>
-      <h2 id="setupTitle">A little bigger.<br>A move ahead.</h2>
+      <div class="dialog-mark" aria-hidden="true"><span style="color:var(--x)">×</span> <span style="color:var(--o)">○</span></div>
+      <h2 id="setupTitle">Make your mark.</h2>
       <p>Two players. Nine boards. One game.<br>Share this screen — X goes first.</p>
+      <div class="color-picker" id="colorPicker">
+        <fieldset><legend>Player X color</legend><div class="swatches" id="xColors"></div></fieldset>
+        <fieldset><legend>Player O color</legend><div class="swatches" id="oColors"></div></fieldset>
+      </div>
+      <details class="setup-rules" id="setupRules">
+      <summary>How to play</summary>
       <ol class="rules">
         <li>Get three in a row to win a small board.</li>
         <li>Your square sends your opponent to the matching small board. Top right square? They play top right.</li>
         <li>If that board is finished, choose any open board.</li>
         <li>Win three small boards in a row to win the game.</li>
       </ol>
+      </details>
       <button class="primary" id="start" type="button">Let’s play</button>
       <button class="secondary" id="cancelSetup" type="button" hidden>Back to game</button>
     </div>
@@ -141,8 +160,10 @@
       const root = document.documentElement;
 
       let cells, miniResults, currentPlayer, targetBoard, history, gameOver;
-      let selectedX = '#242823';
-      let selectedO = '#486c57';
+      let selectedX = '#245bea';
+      let selectedO = '#d52c46';
+      let pendingX = selectedX, pendingO = selectedO, lastMove = null;
+      const positions = ['top left','top middle','top right','middle left','center','middle right','bottom left','bottom middle','bottom right'];
       let started = false, helpOnly = false, returnFocus;
 
       const markSvg = player => player === 'X'
@@ -177,6 +198,7 @@
         currentPlayer = 'X';
         targetBoard = null;
         history = [];
+        lastMove = null;
         gameOver = false;
         closeModal(resultModal);
         render();
@@ -204,7 +226,8 @@
         const c = Number(event.currentTarget.dataset.cell);
         if (!availableBoards().includes(b) || cells[b][c]) return;
 
-        history.push({ cells: cells.map(row => [...row]), miniResults: [...miniResults], currentPlayer, targetBoard });
+        history.push({ cells: cells.map(row => [...row]), miniResults: [...miniResults], currentPlayer, targetBoard, lastMove });
+        lastMove = { board: b, cell: c, player: currentPlayer };
         cells[b][c] = currentPlayer;
 
         const wonMini = getWinner(cells[b]);
@@ -215,7 +238,7 @@
         if (overallWinner) {
           gameOver = true;
           targetBoard = null;
-          render(b, c);
+          render();
           showResult(overallWinner);
           return;
         }
@@ -223,14 +246,14 @@
         if (miniResults.every(Boolean)) {
           gameOver = true;
           targetBoard = null;
-          render(b, c);
+          render();
           showResult('D');
           return;
         }
 
         targetBoard = isPlayable(c) ? c : null;
         currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-        render(b, c);
+        render();
       }
 
       function undo() {
@@ -240,12 +263,14 @@
         miniResults = previous.miniResults;
         currentPlayer = previous.currentPlayer;
         targetBoard = previous.targetBoard;
+        lastMove = previous.lastMove;
         gameOver = false;
         closeModal(resultModal);
         render();
       }
 
-      function render(lastBoard = -1, lastCell = -1) {
+      function render() {
+        const lastBoard = lastMove?.board ?? -1, lastCell = lastMove?.cell ?? -1;
         const playable = availableBoards();
         document.querySelectorAll('.mini-board').forEach((mini, b) => {
           mini.querySelectorAll('.claim').forEach(el => el.remove());
@@ -258,6 +283,8 @@
             const value = cells[b][c];
             button.innerHTML = value ? markSvg(value) : '';
             button.className = `cell${value ? ` ${value.toLowerCase()}` : ''}${b === lastBoard && c === lastCell ? ' just-played' : ''}`;
+            if (b === lastBoard && c === lastCell) button.setAttribute("aria-description", "Last move");
+            else button.removeAttribute("aria-description");
             button.disabled = gameOver || !active || Boolean(value);
             button.setAttribute('aria-label', value ? `Board ${b + 1}, square ${c + 1}: ${value}` : `Board ${b + 1}, square ${c + 1}`);
           });
@@ -270,6 +297,9 @@
           }
         });
 
+        const lastLabel = document.querySelector("#lastMove");
+        lastLabel.textContent = lastMove ? `Last move: ${lastMove.player} · ${positions[lastBoard]} board, ${positions[lastCell]} square` : "X plays first.";
+        lastLabel.style.color = lastMove ? (lastMove.player === "X" ? selectedX : selectedO) : "var(--muted)";
         const turnColor = currentPlayer === 'X' ? selectedX : selectedO;
         statusCard.style.setProperty('--turn-color', turnColor);
         root.style.setProperty('--turn-color', turnColor);
@@ -292,6 +322,7 @@
         document.querySelector('#resultCopy').textContent = isDraw
           ? 'Every mini-board is settled. That was a close one.'
           : 'Three mini-boards in a row. Nicely played.';
+        if (isDraw) { root.style.setProperty('--turn-color', 'var(--ink)'); statusCard.style.setProperty('--turn-color', 'var(--ink)'); turnMark.textContent = '—'; }
         statusTitle.textContent = isDraw ? 'Game drawn' : `Player ${winner} wins`;
         openModal(resultModal);
       }
@@ -303,11 +334,38 @@
         document.querySelector('#oLegend').style.color = selectedO;
       }
 
+      const palette = [['Blue','#245bea'],['Red','#d52c46'],['Purple','#8538d1'],['Orange','#bc4800'],['Pink','#cf2379'],['Teal','#008274']];
+      function renderColors() {
+        for (const player of ['X', 'O']) {
+          const container = document.querySelector(player === 'X' ? '#xColors' : '#oColors');
+          if (!container.children.length) {
+            for (const [name, color] of palette) {
+              const button = document.createElement('button');
+              button.type = 'button'; button.className = 'swatch';
+              button.style.setProperty('--swatch', color);
+              button.dataset.color = color;
+              button.setAttribute('aria-label', `${name} for Player ${player}`);
+              button.innerHTML = markSvg(player);
+              button.addEventListener('click', () => {
+                if (player === 'X') pendingX = color; else pendingO = color;
+                renderColors();
+              });
+              container.appendChild(button);
+            }
+          }
+          for (const button of container.children) {
+            button.setAttribute('aria-pressed', button.dataset.color === (player === 'X' ? pendingX : pendingO));
+            button.disabled = button.dataset.color === (player === 'X' ? pendingO : pendingX);
+          }
+        }
+      }
+
       function openModal(modal) {
         returnFocus = document.activeElement;
         modal.classList.remove('hidden');
         document.querySelector('main').inert = true;
-        modal.querySelector('.primary').focus();
+        modal.querySelector('.primary').focus({ preventScroll:true });
+        modal.scrollTop = 0;
       }
       function closeModal(modal) {
         modal.classList.add('hidden');
@@ -316,13 +374,17 @@
       }
       function openSetup(rulesOnly) {
         helpOnly = rulesOnly;
+        pendingX = selectedX; pendingO = selectedO; renderColors();
+        document.querySelector('#colorPicker').hidden = rulesOnly;
+        document.querySelector('#setupRules').open = rulesOnly;
+        document.querySelector('#setupTitle').textContent = rulesOnly ? 'How to play' : 'Make your mark.';
         document.querySelector('#start').textContent = rulesOnly ? 'Got it' : 'Start new game';
         document.querySelector('#cancelSetup').hidden = rulesOnly;
         openModal(setupModal);
       }
       document.querySelector('#start').addEventListener('click', () => {
         closeModal(setupModal);
-        if (!helpOnly) { started = true; resetGame(); }
+        if (!helpOnly) { selectedX = pendingX; selectedO = pendingO; applyColors(); started = true; resetGame(); }
         boardEl.querySelector('.cell:not(:disabled)')?.focus();
       });
       document.querySelector('#cancelSetup').addEventListener('click', () => closeModal(setupModal));
@@ -337,12 +399,13 @@
         if (!modal) return;
         if (event.key === 'Escape' && started) { closeModal(modal); return; }
         if (event.key !== 'Tab') return;
-        const buttons = [...modal.querySelectorAll('button')].filter(button => !button.hidden);
+        const buttons = [...modal.querySelectorAll('button, summary')].filter(button => !button.disabled && button.getClientRects().length);
         const first = buttons[0], last = buttons[buttons.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       });
 
+      renderColors();
       makeBoard();
       applyColors();
       resetGame();
