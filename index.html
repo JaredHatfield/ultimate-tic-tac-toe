@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Ultimate Tic-Tac-Toe</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #6d7482;
+      --line: #dfe3e8;
+      --soft: #f5f6f8;
+      --x: #2563eb;
+      --o: #ef4444;
+      --active: color-mix(in srgb, var(--turn-color) 7%, white);
+      --shadow: 0 18px 45px rgba(20, 28, 45, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      background: #fff;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    button { font: inherit; }
+
+    .app {
+      width: min(100%, 560px);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand { min-width: 0; }
+    h1 { margin: 0; font-size: clamp(20px, 5vw, 25px); line-height: 1.1; letter-spacing: -.035em; }
+    .eyebrow { margin: 5px 0 0; color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: transform .15s, background .15s, opacity .15s;
+    }
+
+    .icon-button:active:not(:disabled) { transform: scale(.94); background: var(--soft); }
+    .icon-button:disabled { opacity: .3; cursor: default; }
+    .icon-button svg { width: 20px; height: 20px; }
+    button:focus-visible { outline: 3px solid color-mix(in srgb, var(--turn-color, var(--x)) 35%, white); outline-offset: 2px; }
+
+    .status-card {
+      min-height: 69px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .turn-mark {
+      width: 39px;
+      height: 39px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      color: var(--turn-color, var(--x));
+      background: color-mix(in srgb, var(--turn-color, var(--x)) 9%, white);
+      font-size: 25px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .status-copy { min-width: 0; }
+    .status-title { font-size: 15px; font-weight: 750; line-height: 1.25; }
+    .status-hint { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.3; }
+
+    .board-wrap { position: relative; width: 100%; }
+
+    .ultimate-board {
+      width: 100%;
+      aspect-ratio: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(5px, 1.5vw, 8px);
+      padding: clamp(5px, 1.5vw, 8px);
+      border: 2px solid var(--ink);
+      border-radius: 18px;
+      background: var(--ink);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .mini-board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--line);
+      border-radius: 9px;
+      overflow: hidden;
+      outline: 0 solid transparent;
+      transition: opacity .2s, background .2s, outline .2s;
+    }
+
+    .mini-board.active {
+      background: color-mix(in srgb, var(--turn-color) 35%, var(--line));
+      outline: 3px solid var(--turn-color);
+      outline-offset: -3px;
+      z-index: 1;
+    }
+
+    .mini-board.inactive { opacity: .54; }
+    .mini-board.claimed { opacity: 1; }
+
+    .cell {
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: #fff;
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .active .cell:not(:disabled) { background: var(--active); }
+    .cell:disabled { cursor: default; }
+    .mark { width: 64%; height: 64%; display: block; overflow: visible; }
+    .mark path, .mark circle { fill: none; stroke: currentColor; stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+    .cell.x { color: var(--x); }
+    .cell.o { color: var(--o); }
+    .cell.just-played .mark { animation: mark-in .18s cubic-bezier(.2,.8,.3,1.25); }
+
+    @keyframes mark-in { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: scale(1); } }
+
+    .claim {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.91);
+      pointer-events: none;
+      animation: claim-in .25s ease-out;
+    }
+
+    .claim .mark { width: 64%; height: 64%; }
+    .claim.x { color: var(--x); }
+    .claim.o { color: var(--o); }
+    .claim.draw { color: var(--muted); font-size: clamp(12px, 3vw, 17px); font-weight: 800; letter-spacing: .08em; }
+    @keyframes claim-in { from { opacity: 0; transform: scale(.86); } }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-top: 17px;
+    }
+
+    .legend { display: flex; gap: 13px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    .text-button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 0 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .text-button:active { color: var(--ink); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      padding: 24px;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(8px);
+      display: grid;
+      place-items: center;
+      transition: opacity .22s, visibility .22s;
+    }
+
+    .modal.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .dialog { width: min(100%, 390px); text-align: center; }
+    .dialog-mark { width: 54px; height: 54px; margin: 0 auto 22px; border: 2px solid var(--ink); border-radius: 17px; display: grid; place-items: center; font-size: 30px; font-weight: 850; }
+    .dialog h2 { margin: 0; font-size: 27px; letter-spacing: -.04em; }
+    .dialog p { margin: 9px auto 25px; color: var(--muted); font-size: 14px; line-height: 1.55; max-width: 320px; }
+    .choice-label { display: block; margin-bottom: 10px; color: var(--muted); font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+
+    .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; margin-bottom: 25px; }
+    .color-choice {
+      aspect-ratio: 1;
+      border: 2px solid transparent;
+      border-radius: 16px;
+      padding: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .color-choice i { display: block; width: 100%; height: 100%; border-radius: 10px; background: var(--swatch); }
+    .color-choice.selected { border-color: var(--swatch); }
+
+    .primary {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 15px;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform .15s;
+    }
+    .primary:active { transform: scale(.98); }
+
+    .secondary {
+      width: 100%;
+      min-height: 46px;
+      margin-top: 8px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .result-modal .dialog-mark { border: 0; background: var(--soft); color: var(--winner, var(--ink)); }
+
+    @media (max-height: 700px) {
+      .app { padding-top: 12px; padding-bottom: 12px; }
+      header { margin-bottom: 10px; }
+      .status-card { min-height: 58px; padding: 8px 12px; margin-bottom: 10px; }
+      .turn-mark { width: 36px; height: 36px; }
+      .footer { padding-top: 8px; }
+      .ultimate-board { width: min(100%, calc(100dvh - 178px)); margin-inline: auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <h1>Ultimate Tic-Tac-Toe</h1>
+        <p class="eyebrow">Two player · Pass &amp; play</p>
+      </div>
+      <button class="icon-button" id="undo" type="button" aria-label="Undo last move" title="Undo last move" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4 12l5 5M5 12h8a6 6 0 1 1 0 12" transform="translate(0 -3)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </header>
+
+    <section class="status-card" id="statusCard" aria-live="polite">
+      <div class="turn-mark" id="turnMark">X</div>
+      <div class="status-copy">
+        <div class="status-title" id="statusTitle">Player X’s turn</div>
+        <div class="status-hint" id="statusHint">Play in any mini-board</div>
+      </div>
+    </section>
+
+    <div class="board-wrap">
+      <div class="ultimate-board" id="board" role="grid" aria-label="Ultimate Tic-Tac-Toe board"></div>
+    </div>
+
+    <div class="footer">
+      <div class="legend">
+        <span id="xLegend"><i class="dot"></i> Player X</span>
+        <span id="oLegend"><i class="dot"></i> Player O</span>
+      </div>
+      <button class="text-button" id="restart" type="button">New game</button>
+    </div>
+  </main>
+
+  <div class="modal" id="setupModal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="dialog">
+      <div class="dialog-mark">X</div>
+      <h2 id="setupTitle">Choose your color</h2>
+      <p>Player X goes first. Each move sends the other player to the matching mini-board.</p>
+      <span class="choice-label">Player X color</span>
+      <div class="colors" id="colors">
+        <button class="color-choice selected" style="--swatch:#2563eb" data-x="#2563eb" data-o="#ef4444" aria-label="Blue and red" aria-pressed="true"><i></i></button>
+        <button class="color-choice" style="--swatch:#7c3aed" data-x="#7c3aed" data-o="#e11d48" aria-label="Violet and rose" aria-pressed="false"><i></i></button>
+        <button class="color-choice" style="--swatch:#0f766e" data-x="#0f766e" data-o="#ea580c" aria-label="Teal and orange" aria-pressed="false"><i></i></button>
+        <button class="color-choice" style="--swatch:#be123c" data-x="#be123c" data-o="#0369a1" aria-label="Crimson and blue" aria-pressed="false"><i></i></button>
+      </div>
+      <button class="primary" id="start" type="button">Start game</button>
+    </div>
+  </div>
+
+  <div class="modal result-modal hidden" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <div class="dialog">
+      <div class="dialog-mark" id="resultMark">X</div>
+      <h2 id="resultTitle">Player X wins</h2>
+      <p id="resultCopy">Three mini-boards in a row. Nicely played.</p>
+      <button class="primary" id="playAgain" type="button">Play again</button>
+      <button class="secondary" id="undoResult" type="button">Undo last move</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const WIN_LINES = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+
+      const boardEl = document.querySelector('#board');
+      const undoBtn = document.querySelector('#undo');
+      const restartBtn = document.querySelector('#restart');
+      const setupModal = document.querySelector('#setupModal');
+      const resultModal = document.querySelector('#resultModal');
+      const statusCard = document.querySelector('#statusCard');
+      const turnMark = document.querySelector('#turnMark');
+      const statusTitle = document.querySelector('#statusTitle');
+      const statusHint = document.querySelector('#statusHint');
+      const root = document.documentElement;
+
+      let cells, miniResults, currentPlayer, targetBoard, history, gameOver;
+      let selectedX = '#2563eb';
+      let selectedO = '#ef4444';
+
+      const markSvg = player => player === 'X'
+        ? '<svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M22 22 78 78M78 22 22 78"/></svg>'
+        : '<svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="31"/></svg>';
+
+      function makeBoard() {
+        boardEl.innerHTML = '';
+        for (let b = 0; b < 9; b++) {
+          const mini = document.createElement('div');
+          mini.className = 'mini-board';
+          mini.dataset.board = b;
+          mini.setAttribute('role', 'grid');
+          mini.setAttribute('aria-label', `Mini-board ${b + 1}`);
+          for (let c = 0; c < 9; c++) {
+            const button = document.createElement('button');
+            button.className = 'cell';
+            button.type = 'button';
+            button.dataset.board = b;
+            button.dataset.cell = c;
+            button.setAttribute('role', 'gridcell');
+            button.setAttribute('aria-label', `Board ${b + 1}, square ${c + 1}`);
+            button.addEventListener('click', playMove);
+            mini.appendChild(button);
+          }
+          boardEl.appendChild(mini);
+        }
+      }
+
+      function resetGame() {
+        cells = Array.from({ length: 9 }, () => Array(9).fill(null));
+        miniResults = Array(9).fill(null);
+        currentPlayer = 'X';
+        targetBoard = null;
+        history = [];
+        gameOver = false;
+        resultModal.classList.add('hidden');
+        render();
+      }
+
+      function getWinner(values) {
+        for (const [a,b,c] of WIN_LINES) {
+          if (values[a] && values[a] === values[b] && values[a] === values[c]) return values[a];
+        }
+        return null;
+      }
+
+      function isPlayable(boardIndex) {
+        return !miniResults[boardIndex] && cells[boardIndex].some(cell => !cell);
+      }
+
+      function availableBoards() {
+        if (targetBoard !== null && isPlayable(targetBoard)) return [targetBoard];
+        return Array.from({ length: 9 }, (_, i) => i).filter(isPlayable);
+      }
+
+      function playMove(event) {
+        if (gameOver) return;
+        const b = Number(event.currentTarget.dataset.board);
+        const c = Number(event.currentTarget.dataset.cell);
+        if (!availableBoards().includes(b) || cells[b][c]) return;
+
+        history.push({ cells: cells.map(row => [...row]), miniResults: [...miniResults], currentPlayer, targetBoard });
+        cells[b][c] = currentPlayer;
+
+        const wonMini = getWinner(cells[b]);
+        if (wonMini) miniResults[b] = wonMini;
+        else if (cells[b].every(Boolean)) miniResults[b] = 'D';
+
+        const overallWinner = getWinner(miniResults.map(value => value === 'D' ? null : value));
+        if (overallWinner) {
+          gameOver = true;
+          targetBoard = null;
+          render(b, c);
+          showResult(overallWinner);
+          return;
+        }
+
+        if (miniResults.every(Boolean)) {
+          gameOver = true;
+          targetBoard = null;
+          render(b, c);
+          showResult('D');
+          return;
+        }
+
+        targetBoard = isPlayable(c) ? c : null;
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        render(b, c);
+      }
+
+      function undo() {
+        if (!history.length) return;
+        const previous = history.pop();
+        cells = previous.cells;
+        miniResults = previous.miniResults;
+        currentPlayer = previous.currentPlayer;
+        targetBoard = previous.targetBoard;
+        gameOver = false;
+        resultModal.classList.add('hidden');
+        render();
+      }
+
+      function render(lastBoard = -1, lastCell = -1) {
+        const playable = availableBoards();
+        document.querySelectorAll('.mini-board').forEach((mini, b) => {
+          mini.querySelectorAll('.claim').forEach(el => el.remove());
+          const active = !gameOver && playable.includes(b);
+          mini.classList.toggle('active', active);
+          mini.classList.toggle('inactive', !active && !miniResults[b]);
+          mini.classList.toggle('claimed', Boolean(miniResults[b]));
+
+          mini.querySelectorAll('.cell').forEach((button, c) => {
+            const value = cells[b][c];
+            button.innerHTML = value ? markSvg(value) : '';
+            button.className = `cell${value ? ` ${value.toLowerCase()}` : ''}${b === lastBoard && c === lastCell ? ' just-played' : ''}`;
+            button.disabled = gameOver || !active || Boolean(value);
+            button.setAttribute('aria-label', value ? `Board ${b + 1}, square ${c + 1}: ${value}` : `Board ${b + 1}, square ${c + 1}`);
+          });
+
+          if (miniResults[b]) {
+            const claim = document.createElement('div');
+            claim.className = `claim ${miniResults[b] === 'D' ? 'draw' : miniResults[b].toLowerCase()}`;
+            claim.innerHTML = miniResults[b] === 'D' ? 'DRAW' : markSvg(miniResults[b]);
+            mini.appendChild(claim);
+          }
+        });
+
+        const turnColor = currentPlayer === 'X' ? selectedX : selectedO;
+        statusCard.style.setProperty('--turn-color', turnColor);
+        root.style.setProperty('--turn-color', turnColor);
+        turnMark.textContent = currentPlayer;
+        statusTitle.textContent = `Player ${currentPlayer}’s turn`;
+        statusHint.textContent = targetBoard !== null && isPlayable(targetBoard)
+          ? `Play in mini-board ${targetBoard + 1}`
+          : 'Play in any open mini-board';
+        undoBtn.disabled = history.length === 0;
+      }
+
+      function showResult(winner) {
+        const isDraw = winner === 'D';
+        const resultMark = document.querySelector('#resultMark');
+        resultMark.textContent = isDraw ? '—' : winner;
+        resultMark.style.setProperty('--winner', winner === 'X' ? selectedX : winner === 'O' ? selectedO : '#6d7482');
+        resultMark.style.color = winner === 'X' ? selectedX : winner === 'O' ? selectedO : '#6d7482';
+        document.querySelector('#resultTitle').textContent = isDraw ? 'Game drawn' : `Player ${winner} wins`;
+        document.querySelector('#resultCopy').textContent = isDraw
+          ? 'Every mini-board is settled. That was a close one.'
+          : 'Three mini-boards in a row. Nicely played.';
+        setTimeout(() => resultModal.classList.remove('hidden'), 300);
+      }
+
+      function applyColors() {
+        root.style.setProperty('--x', selectedX);
+        root.style.setProperty('--o', selectedO);
+        document.querySelector('#xLegend').style.color = selectedX;
+        document.querySelector('#oLegend').style.color = selectedO;
+      }
+
+      document.querySelector('#colors').addEventListener('click', event => {
+        const choice = event.target.closest('.color-choice');
+        if (!choice) return;
+        document.querySelectorAll('.color-choice').forEach(el => {
+          const selected = el === choice;
+          el.classList.toggle('selected', selected);
+          el.setAttribute('aria-pressed', selected);
+        });
+        selectedX = choice.dataset.x;
+        selectedO = choice.dataset.o;
+      });
+
+      document.querySelector('#start').addEventListener('click', () => {
+        applyColors();
+        resetGame();
+        setupModal.classList.add('hidden');
+      });
+      document.querySelector('#playAgain').addEventListener('click', resetGame);
+      document.querySelector('#undoResult').addEventListener('click', undo);
+      undoBtn.addEventListener('click', undo);
+      restartBtn.addEventListener('click', () => {
+        resetGame();
+        setupModal.classList.remove('hidden');
+      });
+
+      makeBoard();
+      applyColors();
+      resetGame();
+    })();
+  </script>
+</body>
+</html>
