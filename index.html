@@ -40,6 +40,8 @@
     .claim.x { color:var(--x); } .claim.o { color:var(--o); }
     .claim .mark { width:80%; height:80%; } .claim.draw { color:var(--muted); font-size:16px; letter-spacing:2px; }
     .footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:18px; }
+    .site-footer { margin-top:16px; text-align:center; font-size:13px; }
+    .site-footer a, .rules-link a { color:var(--muted); text-underline-offset:3px; }
     .legend { display:flex; gap:12px; font-size:16px; color:var(--muted); }
     .dot { display:none; }
     .text-button { border:0; background:transparent; color:var(--ink); min-height:44px; padding:8px; font-size:16px; }
@@ -106,6 +108,9 @@
       <button class="text-button" id="restart" type="button">New game</button>
     </div>
     <button class="text-button help" id="help" type="button">How to play</button>
+    <footer class="site-footer">
+      <a href="https://github.com/JaredHatfield/ultimate-tic-tac-toe" target="_blank" rel="noopener noreferrer">View the code on GitHub</a>
+    </footer>
   </main>
 
   <div class="modal" id="setupModal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
@@ -125,6 +130,7 @@
         <li>If that board is finished, choose any open board.</li>
         <li>Win three small boards in a row to win the game.</li>
       </ol>
+      <p class="rules-link"><a href="https://en.wikipedia.org/wiki/Ultimate_tic-tac-toe" target="_blank" rel="noopener noreferrer">Read more about the rules on Wikipedia</a></p>
       </details>
       <button class="primary" id="start" type="button">Let’s play</button>
       <button class="secondary" id="cancelSetup" type="button" hidden>Back to game</button>
