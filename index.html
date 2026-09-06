@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <title>Ultimate Tic-Tac-Toe</title>
   <style>
-    :root { color-scheme: light; --ink:#202020; --muted:#666666; --line:#bdbdbd; --paper:#ffffff; --x:#245bea; --o:#d52c46; }
+    :root { color-scheme: light; --ink:#202020; --muted:#666666; --line:#bdbdbd; --paper:#ffffff; --x:#1254ff; --o:#ef233c; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--paper); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-tap-highlight-color:transparent; }
     button { font:inherit; cursor:pointer; touch-action:manipulation; }
@@ -59,7 +59,11 @@
     .color-picker legend { font-size:18px; font-weight:600; margin-bottom:10px; }
     .swatches { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; }
     .swatch { display:grid; place-items:center; height:46px; padding:5px; border:2px solid transparent; border-radius:6px; background:white; color:var(--swatch); }
-    .swatch .mark { width:32px; height:32px; }
+    .swatch .mark { width:34px; height:34px; }
+    .swatch .mark path,.swatch .mark circle,.setup-preview .mark path,.setup-preview .mark circle { stroke-width:13; }
+    .setup-preview { display:flex; gap:16px; margin:24px 0 16px; }
+    .setup-preview span { display:block; width:56px; height:56px; }
+    .setup-preview .mark { width:100%; height:100%; }
     .swatch[aria-pressed="true"] { border-color:currentColor; background:color-mix(in srgb,currentColor 10%,white); }
     .swatch:disabled { opacity:.18; }
     .setup-rules { margin:24px 0; }
@@ -106,8 +110,8 @@
 
   <div class="modal" id="setupModal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
     <div class="dialog">
-      <div class="dialog-mark" aria-hidden="true"><span style="color:var(--x)">×</span> <span style="color:var(--o)">○</span></div>
-      <h2 id="setupTitle">Make your mark.</h2>
+      <h2 id="setupTitle">Ultimate Tic-Tac-Toe</h2>
+      <div class="setup-preview" aria-hidden="true"><span id="previewX"></span><span id="previewO"></span></div>
       <p>Two players. Nine boards. One game.<br>Share this screen — X goes first.</p>
       <div class="color-picker" id="colorPicker">
         <fieldset><legend>Player X color</legend><div class="swatches" id="xColors"></div></fieldset>
@@ -167,8 +171,8 @@
       const root = document.documentElement;
 
       let cells, miniResults, currentPlayer, targetBoard, history, gameOver;
-      let selectedX = '#245bea';
-      let selectedO = '#d52c46';
+      let selectedX = '#1254ff';
+      let selectedO = '#ef233c';
       let pendingX = selectedX, pendingO = selectedO, lastMove = null;
       const SAVE_KEY = 'ultimate-tic-tac-toe-v1';
       let started = false, helpOnly = false, returnFocus;
@@ -222,6 +226,12 @@
       function restoreGame() {
         try {
           const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+          // Keep existing games when upgrading the player palette.
+          const previousColors = {"#245bea": "#1254ff", "#d52c46": "#ef233c", "#8538d1": "#7928ef", "#bc4800": "#ed6500", "#cf2379": "#e00096", "#008274": "#009578"};
+          if (saved) {
+            saved.selectedX = previousColors[saved.selectedX] || saved.selectedX;
+            saved.selectedO = previousColors[saved.selectedO] || saved.selectedO;
+          }
           const index = value => Number.isInteger(value) && value >= 0 && value < 9;
           const validState = state => state && Array.isArray(state.cells) && state.cells.length === 9
             && state.cells.every(row => Array.isArray(row) && row.length === 9 && row.every(value => [null,'X','O'].includes(value)))
@@ -381,8 +391,13 @@
         document.querySelector('#oLegend').style.color = selectedO;
       }
 
-      const palette = [['Blue','#245bea'],['Red','#d52c46'],['Purple','#8538d1'],['Orange','#bc4800'],['Pink','#cf2379'],['Teal','#008274']];
+      const palette = [['Blue','#1254ff'],['Red','#ef233c'],['Purple','#7928ef'],['Orange','#ed6500'],['Pink','#e00096'],['Teal','#009578']];
       function renderColors() {
+        for (const [player,color] of [['X',pendingX],['O',pendingO]]) {
+          const preview = document.querySelector(`#preview${player}`);
+          preview.innerHTML = markSvg(player);
+          preview.style.color = color;
+        }
         for (const player of ['X', 'O']) {
           const container = document.querySelector(player === 'X' ? '#xColors' : '#oColors');
           if (!container.children.length) {
@@ -424,7 +439,7 @@
         pendingX = selectedX; pendingO = selectedO; renderColors();
         document.querySelector('#colorPicker').hidden = rulesOnly;
         document.querySelector('#setupRules').open = rulesOnly;
-        document.querySelector('#setupTitle').textContent = rulesOnly ? 'How to play' : 'Make your mark.';
+        document.querySelector('#setupTitle').textContent = rulesOnly ? 'How to play' : 'Ultimate Tic-Tac-Toe';
         document.querySelector('#start').textContent = rulesOnly ? 'Got it' : 'Start new game';
         document.querySelector('#cancelSetup').hidden = rulesOnly;
         openModal(setupModal);
