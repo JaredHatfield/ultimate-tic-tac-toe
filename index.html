@@ -48,6 +48,7 @@
     .help { display:block; margin:12px auto 0; color:var(--muted); text-decoration:underline; text-underline-offset:4px; }
     .modal { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:24px; background:#fff; overflow-y:auto; }
     .modal.hidden { display:none; }
+    .victory-fireworks { position:fixed; inset:0; width:100%; height:100%; z-index:30; pointer-events:none; }
     .dialog { width:min(100%,360px); margin:auto; }
     .dialog-mark { font-size:40px; letter-spacing:8px; margin-bottom:24px; }
     .dialog h2 { font-size:28px; font-weight:600; letter-spacing:-1px; margin:0; }
@@ -157,6 +158,8 @@
     </div>
   </div>
 
+  <canvas class="victory-fireworks" id="victoryFireworks" aria-hidden="true" hidden></canvas>
+
   <script>
     (() => {
       const WIN_LINES = [
@@ -182,6 +185,112 @@
       let pendingX = selectedX, pendingO = selectedO, lastMove = null;
       const SAVE_KEY = 'ultimate-tic-tac-toe-v1';
       let started = false, helpOnly = false, returnFocus;
+      let stopFireworks = () => {};
+
+      function celebrate(winner) {
+        stopFireworks();
+        const canvas = document.querySelector('#victoryFireworks');
+        const context = canvas.getContext('2d');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        if (!context || reducedMotion.matches) return;
+
+        const color = winner === 'X' ? selectedX : selectedO;
+        let width, height, frame;
+        const resize = () => {
+          width = window.innerWidth;
+          height = window.innerHeight;
+          const scale = Math.min(window.devicePixelRatio || 1, 2);
+          canvas.width = Math.round(width * scale);
+          canvas.height = Math.round(height * scale);
+          context.setTransform(scale, 0, 0, scale, 0, 0);
+        };
+        resize();
+        canvas.hidden = false;
+        window.addEventListener('resize', resize);
+        stopFireworks = () => {
+          cancelAnimationFrame(frame);
+          canvas.hidden = true;
+          context.clearRect(0, 0, width, height);
+          window.removeEventListener('resize', resize);
+          reducedMotion.removeEventListener('change', stopFireworks);
+          stopFireworks = () => {};
+        };
+        reducedMotion.addEventListener('change', stopFireworks);
+
+        // Normalized positions keep the three bursts spread across any screen size.
+        const rockets = [
+          { x:.24, y:.32, from:.12, delay:0 },
+          { x:.76, y:.26, from:.88, delay:.55 },
+          { x:.5, y:.18, from:.43, delay:1.1 }
+        ].map(rocket => ({ ...rocket, sparks:Array.from({ length:64 }, (_, i) => ({
+          angle:i * Math.PI * 2 / 64 + (Math.random() - .5) * .07,
+          speed:.55 + Math.random() * .45,
+          size:7 + Math.random() * 8,
+          life:1.45 + Math.random() * .65
+        })) }));
+
+        const drawMark = (x, y, size, alpha) => {
+          context.globalAlpha = Math.max(0, Math.min(1, alpha));
+          context.strokeStyle = color;
+          context.lineWidth = Math.max(1.5, size * .13);
+          context.lineCap = 'round';
+          context.beginPath();
+          const radius = size / 2;
+          if (winner === 'X') {
+            context.moveTo(x - radius, y - radius);
+            context.lineTo(x + radius, y + radius);
+            context.moveTo(x + radius, y - radius);
+            context.lineTo(x - radius, y + radius);
+          } else {
+            context.arc(x, y, radius, 0, Math.PI * 2);
+          }
+          context.stroke();
+        };
+        const launchTime = .85;
+        const start = performance.now();
+        const animate = now => {
+          const elapsed = (now - start) / 1000;
+          context.clearRect(0, 0, width, height);
+          if (elapsed > 4.2) { stopFireworks(); return; }
+          const spread = Math.min(width * .43, height * .36);
+          for (const rocket of rockets) {
+            const age = elapsed - rocket.delay;
+            if (age < 0) continue;
+            // Each launch leaves a tapering chain of the winner's mark.
+            for (let j = 15; j >= 0; j--) {
+              const trailAge = age - j * .025;
+              if (trailAge < 0 || trailAge > launchTime) continue;
+              const progress = trailAge / launchTime;
+              const eased = 1 - (1 - progress) ** 2;
+              drawMark(
+                width * (rocket.from + (rocket.x - rocket.from) * progress),
+                height * (1.04 + (rocket.y - 1.04) * eased),
+                6 + (1 - j / 16) * 12,
+                (1 - j / 16) * .85
+              );
+            }
+            const burstAge = age - launchTime;
+            if (burstAge < 0) continue;
+            for (const spark of rocket.sparks) {
+              if (burstAge > spark.life) continue;
+              // Short symbol trails follow each spark as it falls and fades.
+              for (let j = 2; j >= 0; j--) {
+                const t = burstAge - j * .045;
+                if (t < 0) continue;
+                const distance = spread * spark.speed * (1 - Math.exp(-1.8 * t));
+                drawMark(
+                  width * rocket.x + Math.cos(spark.angle) * distance,
+                  height * rocket.y + Math.sin(spark.angle) * distance + height * .075 * t * t,
+                  spark.size * (1 - .3 * t / spark.life),
+                  (1 - burstAge / spark.life) ** 1.3 * (j === 0 ? 1 : .2)
+                );
+              }
+            }
+          }
+          frame = requestAnimationFrame(animate);
+        };
+        frame = requestAnimationFrame(animate);
+      }
 
       const markSvg = player => player === 'X'
         ? '<svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M22 22 78 78M78 22 22 78"/></svg>'
@@ -296,6 +405,7 @@
           targetBoard = null;
           render();
           showResult(overallWinner);
+          celebrate(overallWinner);
           return;
         }
 
@@ -436,6 +546,7 @@
         modal.scrollTop = 0;
       }
       function closeModal(modal) {
+        if (modal === resultModal) stopFireworks();
         modal.classList.add('hidden');
         document.querySelector('main').inert = false;
         if (returnFocus && !returnFocus.disabled) returnFocus.focus();
